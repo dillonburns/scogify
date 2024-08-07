@@ -1,0 +1,33 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "148907ddf428922d58ecc5cf0fe4c2b3"
+name = "scogify-ts"
+handle = "scogify-ts"
+application_url = "https://cabinet-los-none-barbara.trycloudflare.com"
+embedded = true
+
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "tchotchkerecords.myshopify.com"
+include_config_on_deploy = true
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "write_products"
+
+[auth]
+redirect_urls = [
+  "https://cabinet-los-none-barbara.trycloudflare.com/auth/callback",
+  "https://cabinet-los-none-barbara.trycloudflare.com/auth/shopify/callback",
+  "https://cabinet-los-none-barbara.trycloudflare.com/api/auth/callback"
+]
+
+[webhooks]
+api_version = "2024-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "/webhooks"
+
+[pos]
+embedded = false
