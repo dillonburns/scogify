@@ -22,9 +22,9 @@ import {
   fetchDiscogsRelease,
 } from "~/utils";
 import { Release as DiscogsRelease } from "~/types";
-import { json, useFetcher } from "@remix-run/react";
+import { useFetcher, Form } from "@remix-run/react";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
-import { ActionFunctionArgs } from "@remix-run/node";
+import { json, ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "~/shopify.server";
 
 const DiscogsConditions = [
@@ -41,27 +41,63 @@ const ProductStatuses = ["Draft", "Active"];
 type DiscogsConditionValue = (typeof DiscogsConditions)[number]["value"];
 
 export const action = async ({ request }: ActionFunctionArgs) => {
+  const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
-  console.log("BODY", { formData });
 
   // Example formData extraction
   const title = formData.get("title");
   const descriptionHtml = formData.get("descriptionHtml");
-  const status = formData.get("status");
-  const images = formData.getAll("images");
-  const tags = formData.get("tags");
-  const metafields = JSON.parse(formData.get("metafields") as string);
-
-  const { admin } = await authenticate.admin(request);
-
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
+  const tags = formData
+    .get("tags")
+    ?.split(",")
+    ?.map((tag) => tag.trim())
+    ?.filter((item) => item !== "");
+  const imageUris = formData
+    .get("imageUris")
+    ?.split(",")
+    ?.filter((item) => item !== "");
+  const media = imageUris.map((imageUri) => {
+    return {
+      originalSource: imageUri,
+      mediaContentType: "IMAGE",
+    };
+  });
+  const sleeveCondition = formData.get("sleeveCondition");
+  const mediaCondition = formData.get("mediaCondition");
+  const musicGenre = formData.get("musicGenre");
+  const discogsUrl = formData.get("discogsUrl");
+  const status = formData.get("status").toUpperCase();
+  const metafields = [
+    {
+      namespace: "custom",
+      key: "sleeve_condition",
+      type: "single_line_text_field",
+      value: sleeveCondition,
+    },
+    {
+      namespace: "custom",
+      key: "media_condition",
+      type: "single_line_text_field",
+      value: mediaCondition,
+    },
+    {
+      namespace: "custom",
+      key: "discogs_url",
+      type: "single_line_text_field",
+      value: discogsUrl,
+    },
+    {
+      namespace: "custom",
+      key: "music_genre",
+      type: "single_line_text_field",
+      value: musicGenre,
+    },
   ];
 
   const response = await admin.graphql(
     `#graphql
       mutation CreateProductWithNewMedia($input: ProductInput!, $media: [CreateMediaInput!]) {
-        productCreate(input: $input , media: $media) {
+        productCreate(input: $input, media: $media) {
           product {
             title
             media(first: 10) {
@@ -78,8 +114,14 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }`,
     {
       variables: {
-        // input: body.get("input"),
-        // media: body.get("media"),
+        input: {
+          title,
+          descriptionHtml,
+          tags,
+          status,
+          metafields,
+        },
+        media: media,
       },
     },
   );
@@ -169,7 +211,7 @@ export default function AddProduct() {
       `${results.formats.map((format) => `${format.name} ${format?.text}`).join(" ")} ${results.released_formatted ? `\nReleased ${results.released_formatted}` : ""}`,
     );
     setShopifyProductTags(
-      `${results.genres.map((genre) => `${genre.replaceAll(",", "")}`).join(", ")},${results.styles?.map((style) => `${style.replaceAll(",", "")}`).join(", ")}`,
+      `${results.genres.map((genre) => `${genre.replaceAll(",", "")}`).join(", ")}, ${results.styles?.map((style) => `${style.replaceAll(",", "")}`).join(", ")}`,
     );
     setShopifyProductMusicGenre(results.genres[0]);
 
@@ -324,7 +366,7 @@ export default function AddProduct() {
                     ))}
                     {searchResults?.formats?.map((format) =>
                       format?.descriptions?.map((description) => (
-                        <Tag>{description}</Tag>
+                        <Tag key={description}>{description}</Tag>
                       )),
                     )}
                   </InlineStack>
@@ -343,9 +385,11 @@ export default function AddProduct() {
                       Genres & Styles
                     </Text>
                     {searchResults.genres.map((genre) => (
-                      <Tag>{genre}</Tag>
+                      <Tag key={genre}>{genre}</Tag>
                     ))}
-                    {searchResults.styles?.map((style) => <Tag>{style}</Tag>)}
+                    {searchResults.styles?.map((style) => (
+                      <Tag key={style}>{style}</Tag>
+                    ))}
                   </InlineStack>
                 </Card>
                 <Card roundedAbove="sm">
@@ -366,8 +410,9 @@ export default function AddProduct() {
                         <Text as="p">No Image</Text>
                       </Tag>
                     )}
-                    {searchResults?.images?.map((image) => (
+                    {searchResults?.images?.map((image, index) => (
                       <Image
+                        key={index}
                         onClick={() => {
                           handleDiscogsImageClick(image.uri);
                         }}
@@ -381,7 +426,7 @@ export default function AddProduct() {
               </BlockStack>
             </Layout.Section>
             <Layout.Section variant="oneHalf">
-              <fetcher.Form method="post">
+              <Form method="post">
                 <BlockStack gap="200">
                   <Text as="h2" variant="headingLg" alignment="center">
                     Shopify Product
@@ -389,12 +434,14 @@ export default function AddProduct() {
                   <Card roundedAbove="sm">
                     <BlockStack gap="400">
                       <TextField
+                        name={"title"}
                         label={"Title"}
                         value={shopifyProductTitle}
                         onChange={setShopifyProductTitle}
                         autoComplete="off"
                       />
                       <TextField
+                        name={"descriptionHtml"}
                         label={"Description"}
                         value={shopifyProductDescription}
                         onChange={setShopifyProductDescription}
@@ -403,8 +450,9 @@ export default function AddProduct() {
                       />
                       <Text as="p">Media</Text>
                       <InlineStack gap="200">
-                        {shopifyProductImageUris.map((imageUri) => (
+                        {shopifyProductImageUris.map((imageUri, index) => (
                           <Image
+                            key={index}
                             source={imageUri}
                             width={125}
                             alt={""}
@@ -414,6 +462,11 @@ export default function AddProduct() {
                           />
                         ))}
                       </InlineStack>
+                      <input
+                        name="imageUris"
+                        type="hidden"
+                        value={shopifyProductImageUris.join(",")}
+                      />
                     </BlockStack>
                   </Card>
                   <Card roundedAbove="sm">
@@ -422,6 +475,7 @@ export default function AddProduct() {
                         Status
                       </Text>
                       <Select
+                        name={"status"}
                         label=""
                         options={ProductStatuses}
                         onChange={handleShopifyProductStatusChange}
@@ -439,24 +493,29 @@ export default function AddProduct() {
                       <Box background="bg-surface-secondary" padding="400">
                         <BlockStack gap="200">
                           <TextField
+                            name={"musicGenre"}
                             label={"Music Genre"}
                             value={shopifyProductMusicGenre}
                             onChange={setShopifyProductMusicGenre}
                             autoComplete="off"
                           />
                           <TextField
+                            name={"discogsUrl"}
                             label={"Discogs URL"}
                             value={searchQuery}
                             onChange={() => {}}
                             autoComplete="off"
+                            readonly
                           />
                           <Select
+                            name="mediaCondition"
                             label="Media condition"
                             options={DiscogsConditions}
                             onChange={handleMediaConditionChange}
                             value={mediaCondition}
                           />
                           <Select
+                            name="sleeveCondition"
                             label="Sleeve Condition"
                             options={DiscogsConditions}
                             onChange={handleSleeveConditionChange}
@@ -484,6 +543,7 @@ export default function AddProduct() {
                             connectedRight={<Button disabled>Select</Button>}
                           />
                           <TextField
+                            name={"tags"}
                             label={"Tags"}
                             value={shopifyProductTags}
                             onChange={setShopifyProductTags}
@@ -497,7 +557,7 @@ export default function AddProduct() {
                   </Card>
                 </BlockStack>
                 <Button submit>Add Product</Button>
-              </fetcher.Form>
+              </Form>
             </Layout.Section>
           </>
         )}
