@@ -43,14 +43,11 @@ type DiscogsConditionValue = (typeof DiscogsConditions)[number]["value"];
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { admin } = await authenticate.admin(request);
   const formData = await request.formData();
-  console.log({ formData });
 
   // Example formData extraction
   const title = formData.get("title");
   const descriptionHtml = formData.get("descriptionHtml");
   const tags = formData.get("tags")?.split(",")?.map(tag => tag.trim())?.filter(item => item !== '');
-  // const status = formData.get("status");
-  // const metafields = JSON.parse(formData.get("metafields") as string);
   const imageUris = formData.get("imageUris")?.split(",")?.filter(item => item !== '');
   const media = imageUris.map((imageUri) => {
     return {
@@ -58,14 +55,37 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       mediaContentType: "IMAGE",
     };
   });
-
-  console.log({
-    title,
-    descriptionHtml,
-    tags,
-    imageUris,
-    media,
-  });
+  const sleeveCondition = formData.get('sleeveCondition');
+  const mediaCondition = formData.get('mediaCondition');
+  const musicGenre = formData.get('musicGenre');
+  const discogsUrl = formData.get('discogsUrl')
+  const status = formData.get('status').toUpperCase();
+  const metafields = [
+    {
+      namespace: "custom",
+      key: "sleeve_condition",
+      type: "single_line_text_field",
+      value: sleeveCondition,
+    },
+    {
+      namespace: "custom",
+      key: "media_condition",
+      type: "single_line_text_field",
+      value: mediaCondition,
+    },
+    {
+      namespace: "custom",
+      key: "discogs_url",
+      type: "single_line_text_field",
+      value: discogsUrl,
+    },
+    {
+      namespace: "custom",
+      key: "music_genre",
+      type: "single_line_text_field",
+      value: musicGenre,
+    },
+  ];
 
   const response = await admin.graphql(
     `#graphql
@@ -91,6 +111,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
           title,
           descriptionHtml,
           tags,
+          status,
+          metafields,
         },
         media: media,
       },
@@ -440,6 +462,7 @@ export default function AddProduct() {
                         Status
                       </Text>
                       <Select
+                        name={"status"}
                         label=""
                         options={ProductStatuses}
                         onChange={handleShopifyProductStatusChange}
@@ -457,24 +480,29 @@ export default function AddProduct() {
                       <Box background="bg-surface-secondary" padding="400">
                         <BlockStack gap="200">
                           <TextField
+                            name={"musicGenre"}
                             label={"Music Genre"}
                             value={shopifyProductMusicGenre}
                             onChange={setShopifyProductMusicGenre}
                             autoComplete="off"
                           />
                           <TextField
+                            name={"discogsUrl"}
                             label={"Discogs URL"}
                             value={searchQuery}
                             onChange={() => {}}
                             autoComplete="off"
+                            readonly
                           />
                           <Select
+                            name="mediaCondition"
                             label="Media condition"
                             options={DiscogsConditions}
                             onChange={handleMediaConditionChange}
                             value={mediaCondition}
                           />
                           <Select
+                            name="sleeveCondition"
                             label="Sleeve Condition"
                             options={DiscogsConditions}
                             onChange={handleSleeveConditionChange}

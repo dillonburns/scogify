@@ -16,6 +16,4 @@ database.sqlite
 shopify.app.toml
 shopify.app.*.toml
 
-
-
 /extensions/*/dist
