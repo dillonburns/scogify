@@ -47,19 +47,26 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   // Example formData extraction
   const title = formData.get("title");
   const descriptionHtml = formData.get("descriptionHtml");
-  const tags = formData.get("tags")?.split(",")?.map(tag => tag.trim())?.filter(item => item !== '');
-  const imageUris = formData.get("imageUris")?.split(",")?.filter(item => item !== '');
+  const tags = formData
+    .get("tags")
+    ?.split(",")
+    ?.map((tag) => tag.trim())
+    ?.filter((item) => item !== "");
+  const imageUris = formData
+    .get("imageUris")
+    ?.split(",")
+    ?.filter((item) => item !== "");
   const media = imageUris.map((imageUri) => {
     return {
       originalSource: imageUri,
       mediaContentType: "IMAGE",
     };
   });
-  const sleeveCondition = formData.get('sleeveCondition');
-  const mediaCondition = formData.get('mediaCondition');
-  const musicGenre = formData.get('musicGenre');
-  const discogsUrl = formData.get('discogsUrl')
-  const status = formData.get('status').toUpperCase();
+  const sleeveCondition = formData.get("sleeveCondition");
+  const mediaCondition = formData.get("mediaCondition");
+  const musicGenre = formData.get("musicGenre");
+  const discogsUrl = formData.get("discogsUrl");
+  const status = formData.get("status").toUpperCase();
   const metafields = [
     {
       namespace: "custom",
@@ -380,7 +387,9 @@ export default function AddProduct() {
                     {searchResults.genres.map((genre) => (
                       <Tag key={genre}>{genre}</Tag>
                     ))}
-                    {searchResults.styles?.map((style) => <Tag key={style}>{style}</Tag>)}
+                    {searchResults.styles?.map((style) => (
+                      <Tag key={style}>{style}</Tag>
+                    ))}
                   </InlineStack>
                 </Card>
                 <Card roundedAbove="sm">
@@ -453,7 +462,11 @@ export default function AddProduct() {
                           />
                         ))}
                       </InlineStack>
-                      <input name="imageUris" type="hidden" value={shopifyProductImageUris.join(",")} />
+                      <input
+                        name="imageUris"
+                        type="hidden"
+                        value={shopifyProductImageUris.join(",")}
+                      />
                     </BlockStack>
                   </Card>
                   <Card roundedAbove="sm">
