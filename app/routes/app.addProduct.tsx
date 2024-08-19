@@ -22,7 +22,7 @@ import {
   fetchDiscogsRelease,
 } from "~/utils";
 import { Release as DiscogsRelease } from "~/types";
-import { useFetcher, Form } from "@remix-run/react";
+import { useActionData, Form } from "@remix-run/react";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import { json, ActionFunctionArgs } from "@remix-run/node";
 import { authenticate } from "~/shopify.server";
@@ -99,6 +99,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       mutation CreateProductWithNewMedia($input: ProductInput!, $media: [CreateMediaInput!]) {
         productCreate(input: $input, media: $media) {
           product {
+            id
             title
             media(first: 10) {
               nodes {
@@ -134,17 +135,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function AddProduct() {
-  const fetcher = useFetcher<typeof action>();
+  const actionData = useActionData<typeof action>();
   const shopify = useAppBridge();
 
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
-
-  const productId = fetcher.data?.product?.id.replace(
-    "gid://shopify/Product/",
-    "",
-  );
+  const productId = actionData?.product?.id;
 
   useEffect(() => {
     if (productId) {
